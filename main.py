@@ -1,46 +1,10 @@
-from note import Note
+from repository import NoteRepository
 
-
-# Клас-Репозиторій
-class NoteRepository:
-
-    def __init__(self):
-        self._storage: dict[int, Note] = {}
-        self._next_id: int = 1
-
-    def add(self, title: str, content: str) -> Note:
-        note = Note(note_id=self._next_id, title=title, content=content)
-        self._storage[note.id] = note
-        self._next_id += 1
-        return note
-
-    def get_all(self) -> list[Note]:
-        return list(self._storage.values())
-
-    def get_by_id(self, note_id: int) -> Note | None:
-        return self._storage.get(note_id)
-
-    def update(self, note_id: int, title: str, content: str) -> Note | None:
-        note = self.get_by_id(note_id)
-        if note:
-            note.title = title
-            note.content = content
-            return note
-        return None
-
-    def delete(self, note_id: int) -> bool:
-        if note_id in self._storage:
-            del self._storage[note_id]
-            return True
-        return False
-
-
-# --- ІНТЕРАКТИВНЕ КЕРУВАННЯ В КОНСОЛІ ---
 if __name__ == "__main__":
     repo = NoteRepository()
 
     while True:
-        print("\n=== МЕНЮ ===")
+        print("\n=== МЕНЮ (Mind Card Notes) ===")
         print("1. Створити нотатку")
         print("2. Показати всі нотатки")
         print("3. Прочитати нотатку за ID")
