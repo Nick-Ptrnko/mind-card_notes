@@ -7,11 +7,23 @@ from pymysql.cursors import DictCursor
 # Завантажуємо змінні з файлу .env
 load_dotenv()
 
+# Зчитуємо параметри
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_NAME = os.getenv("DB_NAME")
+
+# Перевіряємо, чи всі критичні змінні задані у .env
+if not all([DB_USER, DB_PASSWORD, DB_NAME]):
+    raise ValueError(
+        "❌ Помилка: Не заповнено обов'язкові змінні середовища (DB_USER, DB_PASSWORD або DB_NAME) у файлі .env!"
+    )
+
 DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "mysqluser"),
-    "password": os.getenv("DB_PASSWORD", "0704"),
-    "database": os.getenv("DB_NAME", "mind_card_notes"),
+    "host": DB_HOST,
+    "user": DB_USER,
+    "password": DB_PASSWORD,
+    "database": DB_NAME,
     "charset": "utf8mb4",
     "cursorclass": DictCursor,
 }
