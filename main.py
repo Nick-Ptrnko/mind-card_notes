@@ -1,3 +1,4 @@
+from backup import export_notes_to_json, import_notes_from_json
 from repository import NoteRepository
 
 if __name__ == "__main__":
@@ -10,6 +11,8 @@ if __name__ == "__main__":
         print("3. Прочитати нотатку за ID")
         print("4. Редагувати нотатку")
         print("5. Видалити нотатку")
+        print("6. Зробити бекап у JSON")
+        print("7. Відновити з JSON-бекапу")
         print("0. Вийти")
 
         choice = input("Виберіть дію: ").strip()
@@ -19,14 +22,14 @@ if __name__ == "__main__":
             content = input("Введіть текст нотатки: ").strip()
             if title and content:
                 new_note = repo.add(title=title, content=content)
-                print(f" Успішно створено нотатку #{new_note.id}")
+                print(f"✅ Успішно створено нотатку #{new_note.id}")
             else:
-                print(" Заголовок і текст не можуть бути порожніми!")
+                print("⚠️ Заголовок і текст не можуть бути порожніми!")
 
         elif choice == "2":
             notes = repo.get_all()
             if not notes:
-                print(" Список нотаток порожній.")
+                print("📭 Список нотаток порожній.")
             else:
                 print("\n--- Список усіх нотаток ---")
                 for note in notes:
@@ -43,9 +46,9 @@ if __name__ == "__main__":
                     print(f"Текст:     {note.content}")
                     print(f"Створено:  {note.created_at}")
                 else:
-                    print(f" Нотатку з ID {note_id} не знайдено.")
+                    print(f"❌ Нотатку з ID {note_id} не знайдено.")
             else:
-                print(" ID має бути числом!")
+                print("⚠️ ID має бути числом!")
 
         elif choice == "4":
             raw_id = input("Введіть ID нотатки для редагування: ").strip()
@@ -69,26 +72,44 @@ if __name__ == "__main__":
                     repo.update(
                         note_id, title=updated_title, content=updated_content
                     )
-                    print(f" Успішно оновлено нотатку #{note_id}")
+                    print(f"✅ Успішно оновлено нотатку #{note_id}")
                 else:
-                    print(f" Нотатку з ID {note_id} не знайдено.")
+                    print(f"❌ Нотатку з ID {note_id} не знайдено.")
             else:
-                print(" ID має бути числом!")
+                print("⚠️ ID має бути числом!")
 
         elif choice == "5":
             raw_id = input("Введіть ID нотатки для видалення: ").strip()
             if raw_id.isdigit():
                 note_id = int(raw_id)
                 if repo.delete(note_id):
-                    print(f" Нотатку #{note_id} успішно видалено.")
+                    print(f"✅ Нотатку #{note_id} успішно видалено.")
                 else:
-                    print(f" Нотатку з ID {note_id} не знайдено.")
+                    print(f"❌ Нотатку з ID {note_id} не знайдено.")
             else:
-                print(" ID має бути числом!")
+                print("⚠️ ID має бути числом!")
+
+        elif choice == "6":
+            try:
+                filename = "mind_card_backup.json"
+                count = export_notes_to_json(repo, filename)
+                print(f"✅ Успішно збережено {count} нотаток у файл '{filename}'")
+            except Exception as e:
+                print(f"❌ Помилка під час створення бекапу: {e}")
+
+        elif choice == "7":
+            try:
+                filename = "mind_card_backup.json"
+                count = import_notes_from_json(repo, filename)
+                print(
+                    f"✅ Успішно відновлено {count} нотаток з файлу '{filename}'"
+                )
+            except Exception as e:
+                print(f"❌ Помилка під час відновлення: {e}")
 
         elif choice == "0":
             print("До побачення!")
             break
 
         else:
-            print("Невідома команда, спробуйте ще раз.")
+            print("⚠️ Невідома команда, спробуйте ще раз.")

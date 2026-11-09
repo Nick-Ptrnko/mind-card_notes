@@ -7,13 +7,12 @@ from pymysql.cursors import DictCursor
 # Завантажуємо змінні з файлу .env
 load_dotenv()
 
-# Зчитуємо параметри
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_NAME = os.getenv("DB_NAME")
 
-# Перевіряємо, чи всі критичні змінні задані у .env
+# Перевірка наявності критичних параметрів (захист від захардкоджених секретів)
 if not all([DB_USER, DB_PASSWORD, DB_NAME]):
     raise ValueError(
         "❌ Помилка: Не заповнено обов'язкові змінні середовища (DB_USER, DB_PASSWORD або DB_NAME) у файлі .env!"
@@ -128,5 +127,28 @@ class NoteRepository:
                 cursor.execute(query, (note_id,))
                 connection.commit()
                 return cursor.rowcount > 0
+        finally:
+            connection.close()
+
+    def restore_note(
+        self, note_id: int, title: str, content: str, created_at: str
+    ) -> None:
+        """Відновлює нотатку з конкретним ID та датою (для бекапів).
+
+        Якщо нотатка з таким ID вже існує — оновлює її.
+        """
+        connection = self._get_connection()
+        try:
+            with connection.cursor() as cursor:
+                query = """
+                    INSERT INTO notes (id, title, content, created_at) 
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                    title = VALUES(title), 
+                    content = VALUES(content), 
+                    created_at = VALUES(created_at)
+                """
+                cursor.execute(query, (note_id, title, content, created_at))
+                connection.commit()
         finally:
             connection.close()
