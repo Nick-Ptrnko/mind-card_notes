@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ note.title }}</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    
+    <style>
+        #note-content h1 { font-size: 1.75rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #6366f1; }
+        #note-content h2 { font-size: 1.4rem; font-weight: bold; margin-top: 0.8rem; margin-bottom: 0.4rem; color: #818cf8; }
+        #note-content h3 { font-size: 1.15rem; font-weight: bold; margin-top: 0.6rem; margin-bottom: 0.3rem; }
+        
+        #note-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        #note-content th, #note-content td { border: 1px solid #4b5563; padding: 0.5rem 0.75rem; text-align: left; }
+        #note-content th { background-color: rgba(99, 102, 241, 0.1); }
+
+        #note-content mark {
+            background-color: #fde047;
+            color: #1f2937;
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+        }
+        .dark #note-content mark {
+            background-color: #facc15;
+            color: #111827;
+        }
+
+        #note-content a {
+            color: #6366f1;
+            text-decoration: underline;
+        }
+        .dark #note-content a {
+            color: #818cf8;
+        }
+
+        #note-content pre {
+            position: relative;
+            background-color: #0d1117;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            overflow-x: hidden;
+        }
+        #note-content pre code.language-python::before {
+            content: "Python";
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-size: 0.65rem;
+            color: #9ca3af;
+            font-family: sans-serif;
+        }
+        /* Зменшений шрифт коду в 1.5 рази */
+        #note-content code {
+            font-family: monospace;
+            font-size: 0.7rem; 
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+        /* Стилі для списків (маркованих та нумерованих) */
+        #note-content ul, #preview-content ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        #note-content ol, #preview-content ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        #note-content li, #preview-content li { margin-bottom: 0.25rem; }
+        /* Відступи для абзаців, щоб пусті рядки відображалися коректно */
+        #note-content p, #preview-content p {
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans min-h-screen md:py-6">
+    <div class="w-full px-4 py-4 sm:px-6 md:max-w-2xl md:mx-auto bg-white dark:bg-gray-900 min-h-screen md:min-h-min md:rounded-lg shadow-none md:shadow-md">
+        <h1 class="text-3xl md:text-2xl font-bold mb-2 text-indigo-600 dark:text-indigo-400">{{ note.title }}</h1>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">Створено: {{ note.created_at }}</p>
+        
+        <div id="note-content" class="bg-gray-50 dark:bg-gray-800/50 p-4 md:p-6 rounded-lg border border-gray-200 dark:border-gray-800 mb-6 text-lg md:text-base leading-relaxed overflow-x-auto"></div>
+        
+        <div class="flex justify-between items-center">
+            <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2.5 rounded text-sm transition-colors">← Назад до списку</a>
+            <div class="flex gap-2">
+                <a href="/notes/{{ note.id }}/edit" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded text-sm transition-colors">Редагувати</a>
+                <form action="/notes/{{ note.id }}/delete" method="POST" onsubmit="return confirm('Видалити нотатку?');">
+                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded text-sm transition-colors">Видалити</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <script>
+        const titlesMap = {{ titles_map | tojson | safe }};
+        let rawContent = {{ note.content | tojson | safe }};
+        const contentDiv = document.getElementById('note-content');
+        
+        try {
+            rawContent = rawContent.replace(/\[\[(.*?)\]\]/g, (match, title) => {
+                const trimmed = title.trim();
+                if (titlesMap[trimmed]) {
+                    return `[${trimmed}](/notes/${titlesMap[trimmed]})`;
+                } else {
+                    return `**[[${trimmed}]]**`;
+                }
+            });
+
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({ breaks: true, gfm: true });
+                let parsed = marked.parse(rawContent);
+                parsed = parsed.replace(/==(.*?)==/g, '<mark>$1</mark>');
+                contentDiv.innerHTML = parsed;
+            } else {
+                contentDiv.textContent = rawContent;
+            }
+        } catch (e) {
+            contentDiv.textContent = rawContent;
+        }
+        
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+        });
+    </script>
+</body>
+</html>

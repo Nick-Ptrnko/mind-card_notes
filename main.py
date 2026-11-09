@@ -1,115 +1,116 @@
+import os
 from backup import export_notes_to_json, import_notes_from_json
+from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from fastapi.templating import Jinja2Templates
 from repository import NoteRepository
 
-if __name__ == "__main__":
-    repo = NoteRepository()
+app = FastAPI(title="Mind Card Notes Web")
+templates = Jinja2Templates(directory="templates")
+repo = NoteRepository()
 
-    while True:
-        print("\n=== МЕНЮ (Mind Card Notes) ===")
-        print("1. Створити нотатку")
-        print("2. Показати всі нотатки")
-        print("3. Прочитати нотатку за ID")
-        print("4. Редагувати нотатку")
-        print("5. Видалити нотатку")
-        print("6. Зробити бекап у JSON")
-        print("7. Відновити з JSON-бекапу")
-        print("0. Вийти")
+BIO_FILE = "bio.txt"
 
-        choice = input("Виберіть дію: ").strip()
 
-        if choice == "1":
-            title = input("Введіть заголовок: ").strip()
-            content = input("Введіть текст нотатки: ").strip()
-            if title and content:
-                new_note = repo.add(title=title, content=content)
-                print(f"✅ Успішно створено нотатку #{new_note.id}")
-            else:
-                print("⚠️ Заголовок і текст не можуть бути порожніми!")
+def get_bio() -> str:
+  if os.path.exists(BIO_FILE):
+    with open(BIO_FILE, "r", encoding="utf-8") as f:
+      return f.read()
+  return "Мій персональний лог нотаток та думок."
 
-        elif choice == "2":
-            notes = repo.get_all()
-            if not notes:
-                print("📭 Список нотаток порожній.")
-            else:
-                print("\n--- Список усіх нотаток ---")
-                for note in notes:
-                    print(f"#{note.id} | {note.title} ({note.created_at})")
 
-        elif choice == "3":
-            raw_id = input("Введіть ID нотатки: ").strip()
-            if raw_id.isdigit():
-                note_id = int(raw_id)
-                note = repo.get_by_id(note_id)
-                if note:
-                    print(f"\n--- Нотатка #{note.id} ---")
-                    print(f"Заголовок: {note.title}")
-                    print(f"Текст:     {note.content}")
-                    print(f"Створено:  {note.created_at}")
-                else:
-                    print(f"❌ Нотатку з ID {note_id} не знайдено.")
-            else:
-                print("⚠️ ID має бути числом!")
+def save_bio(text: str):
+  with open(BIO_FILE, "w", encoding="utf-8") as f:
+    f.write(text)
 
-        elif choice == "4":
-            raw_id = input("Введіть ID нотатки для редагування: ").strip()
-            if raw_id.isdigit():
-                note_id = int(raw_id)
-                note = repo.get_by_id(note_id)
-                if note:
-                    print(
-                        f"Поточний заголовок: {note.title}\nПоточний текст: {note.content}"
-                    )
-                    title = input(
-                        "Введіть новий заголовок (або залиште порожнім, щоб не змінювати): "
-                    ).strip()
-                    content = input(
-                        "Введіть новий текст (або залиште порожнім, щоб не змінювати): "
-                    ).strip()
 
-                    updated_title = title if title else note.title
-                    updated_content = content if content else note.content
+@app.get("/")
+def index(request: Request):
+  notes = repo.get_all()
+  notes_sorted = sorted(
+      notes, key=lambda n: n.created_at if n.created_at else "", reverse=True
+  )
+  bio_text = get_bio()
+  titles_map = {n.title: n.id for n in notes}
+  return templates.TemplateResponse(
+      request,
+      "index.html",
+      context={"notes": notes_sorted, "bio_text": bio_text, "titles_map": titles_map},
+  )
 
-                    repo.update(
-                        note_id, title=updated_title, content=updated_content
-                    )
-                    print(f"✅ Успішно оновлено нотатку #{note_id}")
-                else:
-                    print(f"❌ Нотатку з ID {note_id} не знайдено.")
-            else:
-                print("⚠️ ID має бути числом!")
 
-        elif choice == "5":
-            raw_id = input("Введіть ID нотатки для видалення: ").strip()
-            if raw_id.isdigit():
-                note_id = int(raw_id)
-                if repo.delete(note_id):
-                    print(f"✅ Нотатку #{note_id} успішно видалено.")
-                else:
-                    print(f"❌ Нотатку з ID {note_id} не знайдено.")
-            else:
-                print("⚠️ ID має бути числом!")
+@app.post("/bio/update")
+def update_bio(bio_text: str = Form(...)):
+  save_bio(bio_text)
+  return RedirectResponse(url="/", status_code=303)
 
-        elif choice == "6":
-            try:
-                filename = "mind_card_backup.json"
-                count = export_notes_to_json(repo, filename)
-                print(f"✅ Успішно збережено {count} нотаток у файл '{filename}'")
-            except Exception as e:
-                print(f"❌ Помилка під час створення бекапу: {e}")
 
-        elif choice == "7":
-            try:
-                filename = "mind_card_backup.json"
-                count = import_notes_from_json(repo, filename)
-                print(
-                    f"✅ Успішно відновлено {count} нотаток з файлу '{filename}'"
-                )
-            except Exception as e:
-                print(f"❌ Помилка під час відновлення: {e}")
+@app.get("/notes/new")
+def create_note_form(request: Request):
+  all_notes = repo.get_all()
+  titles_map = {n.title: n.id for n in all_notes}
+  return templates.TemplateResponse(
+      request, "create.html", context={"titles_map": titles_map}
+  )
 
-        elif choice == "0":
-            print("До побачення!")
-            break
 
-        else:
-            print("⚠️ Невідома команда, спробуйте ще раз.")
+@app.post("/notes")
+def create_note(title: str = Form(...), content: str = Form(...)):
+  if title.strip() and content.strip():
+    repo.add(title=title, content=content)
+  return RedirectResponse(url="/", status_code=303)
+
+
+@app.get("/notes/{note_id}")
+def view_note(request: Request, note_id: int):
+  note = repo.get_by_id(note_id)
+  if not note:
+    raise HTTPException(status_code=404, detail="Нотатку не знайдено")
+  all_notes = repo.get_all()
+  titles_map = {n.title: n.id for n in all_notes}
+  return templates.TemplateResponse(
+      request,
+      "detail.html",
+      context={"note": note, "titles_map": titles_map},
+  )
+
+
+@app.get("/notes/{note_id}/edit")
+def edit_note_form(request: Request, note_id: int):
+  note = repo.get_by_id(note_id)
+  if not note:
+    raise HTTPException(status_code=404, detail="Нотатку не знайдено")
+  all_notes = repo.get_all()
+  titles_map = {n.title: n.id for n in all_notes}
+  return templates.TemplateResponse(
+      request,
+      "edit.html",
+      context={"note": note, "titles_map": titles_map},
+  )
+
+
+@app.post("/notes/{note_id}/update")
+def update_note(note_id: int, title: str = Form(...), content: str = Form(...)):
+  repo.update(note_id, title=title, content=content)
+  return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/notes/{note_id}/delete")
+def delete_note(note_id: int):
+  repo.delete(note_id)
+  return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/backup")
+def make_backup():
+  export_notes_to_json(repo)
+  return RedirectResponse(url="/", status_code=303)
+
+
+@app.post("/restore")
+def restore_backup():
+  try:
+    import_notes_from_json(repo)
+  except Exception:
+    pass
+  return RedirectResponse(url="/", status_code=303)

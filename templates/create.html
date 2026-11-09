@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Створити нотатку - mind cards log</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Highlight.js Стилі -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    
+    <style>
+        #preview-content h1 { font-size: 1.75rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #6366f1; }
+        #preview-content h2 { font-size: 1.4rem; font-weight: bold; margin-top: 0.8rem; margin-bottom: 0.4rem; color: #818cf8; }
+        #preview-content h3 { font-size: 1.15rem; font-weight: bold; margin-top: 0.6rem; margin-bottom: 0.3rem; }
+        
+        #preview-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+        #preview-content th, #preview-content td { border: 1px solid #4b5563; padding: 0.5rem 0.75rem; text-align: left; }
+        #preview-content th { background-color: rgba(99, 102, 241, 0.1); }
+
+        #preview-content mark {
+            background-color: #fde047;
+            color: #1f2937;
+            padding: 0.1rem 0.3rem;
+            border-radius: 0.25rem;
+        }
+        .dark #preview-content mark {
+            background-color: #facc15;
+            color: #111827;
+        }
+
+        #preview-content pre {
+            position: relative;
+            background-color: #0d1117;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+        }
+        #preview-content code {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Стилі для випадаючого списку автокомліту */
+        #autocomplete-list {
+            position: absolute;
+            z-index: 50;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        /* Стилі для списків (маркованих та нумерованих) */
+        #note-content ul, #preview-content ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        #note-content ol, #preview-content ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        #note-content li, #preview-content li { margin-bottom: 0.25rem; }
+        /* Відступи для абзаців, щоб пусті рядки відображалися коректно */
+        #note-content p, #preview-content p {
+            margin-bottom: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans min-h-screen md:py-6">
+    <div class="w-full px-4 py-4 sm:px-6 md:max-w-5xl md:mx-auto bg-white dark:bg-gray-900 min-h-screen md:min-h-min md:rounded-lg shadow-none md:shadow-md">
+        <h1 class="text-3xl md:text-2xl font-bold mb-4 text-indigo-600 dark:text-indigo-400">✍️ Створити нотатку</h1>
+        <form action="/notes" method="POST">
+            <div class="mb-3">
+                <label class="block text-sm font-semibold mb-1">Заголовок</label>
+                <input type="text" name="title" placeholder="Заголовок" required spellcheck="false" class="w-full p-3 text-lg md:text-base border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="relative">
+                    <label class="block text-sm font-semibold mb-1">Текст нотатки (Markdown)</label>
+                    <textarea id="content-input" name="content" rows="14" placeholder="Текст нотатки..." required spellcheck="false" class="w-full p-3 text-base font-mono border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"></textarea>
+                    
+                    <!-- Випадаючий список автокомліту -->
+                    <div id="autocomplete-list" class="hidden bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg w-full"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Попередній перегляд (Live Preview)</label>
+                    <div id="preview-content" class="w-full h-[356px] overflow-y-auto p-3 border border-gray-300 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800/50 text-base leading-relaxed"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded transition-colors text-base">Зберегти</button>
+                <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white px-5 py-2.5 rounded flex items-center transition-colors text-base">Скасувати</a>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <script>
+        const titlesMap = {{ titles_map | tojson | safe }};
+        const textarea = document.getElementById('content-input');
+        const preview = document.getElementById('preview-content');
+        const autocompleteList = document.getElementById('autocomplete-list');
+
+        let activeMatchStart = -1;
+
+        function updatePreview() {
+            let val = textarea.value;
+            try {
+                val = val.replace(/\[\[(.*?)\]\]/g, (match, title) => {
+                    const trimmed = title.trim();
+                    if (titlesMap[trimmed]) {
+                        return `[${trimmed}](/notes/${titlesMap[trimmed]})`;
+                    } else {
+                        return `**[[${trimmed}]]**`;
+                    }
+                });
+
+                marked.setOptions({ breaks: true, gfm: true });
+                let parsed = marked.parse(val);
+                parsed = parsed.replace(/==(.*?)==/g, '<mark>$1</mark>');
+                preview.innerHTML = parsed;
+                preview.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            } catch (e) {
+                preview.textContent = val;
+            }
+        }
+
+        // Логіка автокомліту
+        textarea.addEventListener('input', function() {
+            updatePreview();
+
+            const pos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, pos);
+            const match = textBefore.match(/\[\[([^\]]*)$/);
+
+            if (match) {
+                activeMatchStart = match.index;
+                const query = match[1].toLowerCase();
+                const titles = Object.keys(titlesMap);
+                const filtered = titles.filter(t => t.toLowerCase().includes(query));
+
+                if (filtered.length > 0) {
+                    autocompleteList.innerHTML = '';
+                    filtered.forEach(title => {
+                        const item = document.createElement('div');
+                        item.textContent = title;
+                        item.className = "p-2 hover:bg-indigo-500 hover:text-white cursor-pointer text-sm font-sans";
+                        item.addEventListener('click', () => {
+                            selectTitle(title);
+                        });
+                        autocompleteList.appendChild(item);
+                    });
+                    autocompleteList.classList.remove('hidden');
+                } else {
+                    autocompleteList.classList.add('hidden');
+                }
+            } else {
+                autocompleteList.classList.add('hidden');
+            }
+        });
+
+        function selectTitle(title) {
+            const pos = textarea.selectionStart;
+            const val = textarea.value;
+            const before = val.substring(0, activeMatchStart);
+            const after = val.substring(pos);
+
+            textarea.value = before + '[[' + title + ']]' + after;
+            autocompleteList.classList.add('hidden');
+            
+            const newPos = activeMatchStart + title.length + 4;
+            textarea.setSelectionRange(newPos, newPos);
+            textarea.focus();
+            updatePreview();
+        }
+
+        // Закриття списку при кліку поза полем
+        document.addEventListener('click', function(e) {
+            if (!textarea.contains(e.target) && !autocompleteList.contains(e.target)) {
+                autocompleteList.classList.add('hidden');
+            }
+        });
+
+        updatePreview();
+    </script>
+</body>
+</html>

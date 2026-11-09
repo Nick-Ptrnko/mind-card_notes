@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mind cards log</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans min-h-screen md:py-6">
+    <div class="w-full px-4 py-4 sm:px-6 md:max-w-2xl md:mx-auto bg-white dark:bg-gray-900 min-h-screen md:min-h-min md:rounded-lg shadow-none md:shadow-md">
+        
+        <!-- Верхня частина з обтіканням -->
+        <div class="mb-6">
+            <h1 class="text-3xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-3">mind cards log</h1>
+            
+            <!-- Блок кнопок з обтіканням праворуч -->
+            <div class="float-right ml-3 mb-2 flex flex-col gap-1.5 w-28 sm:w-32 shrink-0">
+                <a href="/notes/new" class="bg-indigo-600 hover:bg-indigo-700 text-white text-center py-1 px-2 rounded text-xs font-semibold transition-colors shadow">+ Створити</a>
+                <form action="/backup" method="POST" class="w-full"><button class="w-full bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded text-xs transition-colors shadow">Бекап</button></form>
+                <form action="/restore" method="POST" class="w-full"><button class="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-2 rounded text-xs transition-colors shadow">Відновити</button></form>
+            </div>
+
+            <!-- Текст під заголовком -->
+            <div class="text-base md:text-sm text-gray-700 dark:text-gray-300">
+                <div id="bio-display">{{ bio_text }}</div>
+                <form id="bio-form" action="/bio/update" method="POST" class="hidden mt-2 clear-both">
+                    <textarea name="bio_text" rows="3" spellcheck="false" class="w-full p-2.5 text-base md:text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">{{ bio_text }}</textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-sm">Зберегти</button>
+                        <button type="button" onclick="toggleBioEdit()" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm">Скасувати</button>
+                    </div>
+                </form>
+                <div class="clear-both pt-2">
+                    <button type="button" id="bio-edit-btn" onclick="toggleBioEdit()" class="text-xs text-indigo-500 dark:text-indigo-400 hover:underline block">Редагувати текст</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="clear-both pt-2"></div>
+
+        <hr class="border-gray-200 dark:border-gray-800 mb-6">
+
+        <!-- Рядок пошуку нотаток -->
+        <div class="mb-6">
+            <input type="text" id="search-input" placeholder="🔍 Пошук нотаток за назвою..." spellcheck="false" class="w-full p-2.5 text-base md:text-sm border border-gray-300 dark:border-gray-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+        </div>
+
+        <!-- Список нотаток -->
+        {% if not notes %}
+            <p class="text-gray-500 dark:text-gray-400 text-base">Список нотаток порожній.</p>
+        {% else %}
+            <div id="notes-list" class="space-y-4">
+                {% set ns = namespace(last_date=None) %}
+                {% for note in notes %}
+                    {% set note_date = note.created_at.strftime('%Y-%m-%d') if note.created_at else '' %}
+                    
+                    {% if note_date != ns.last_date %}
+                        {% set ns.last_date = note_date %}
+                        <div class="date-header text-sm md:text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-6 mb-2 border-b border-gray-200 dark:border-gray-800 pb-1">{{ note_date }}</div>
+                    {% endif %}
+
+                    <div class="note-item p-4 border border-gray-200 dark:border-gray-800 rounded-lg flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-title="{{ note.title }}">
+                        <div>
+                            <a href="/notes/{{ note.id }}" class="font-bold text-indigo-600 dark:text-indigo-400 hover:underline text-lg md:text-base">{{ note.title }}</a>
+                            <span class="text-xs text-gray-400 dark:text-gray-500 block mt-0.5">{{ note.created_at.strftime('%H:%M:%S') if note.created_at else '' }}</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+    function toggleBioEdit() {
+        const display = document.getElementById('bio-display');
+        const form = document.getElementById('bio-form');
+        const btn = document.getElementById('bio-edit-btn');
+        if (form.classList.contains('hidden')) {
+            form.classList.remove('hidden');
+            display.classList.add('hidden');
+            btn.classList.add('hidden');
+        } else {
+            form.classList.add('hidden');
+            display.classList.remove('hidden');
+            btn.classList.remove('hidden');
+        }
+    }
+
+    // Живий пошук по нотатках
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        const items = document.querySelectorAll('.note-item');
+        
+        items.forEach(item => {
+            const title = item.getAttribute('data-title').toLowerCase();
+            if (title.includes(query)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+    </script>
+</body>
+</html>
