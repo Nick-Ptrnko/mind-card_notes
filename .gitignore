@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 .vscode/
 mind_card_backup.json
+bio.txt
