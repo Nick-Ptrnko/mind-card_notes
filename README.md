@@ -18,7 +18,7 @@ Beyond its practical utility for taking notes and accessing them from any device
 
 ## ✨ Features
 
-* **Live Preview та Markdown:** The `marked.js` library is used for instant conversion of Markdown markup into HTML right while typing, as well as `highlight.js` for syntax highlighting of program code.
+* **Live Preview and Markdown:** The `marked.js` library is used for instant conversion of Markdown markup into HTML right while typing, as well as `highlight.js` for syntax highlighting of program code.
 * **Custom Syntax Extensions:**
   * Autocomplete and internal linking between notes are implemented using double square bracket syntax (`[[Note Title]]`).
   * Added support for highlighting text with markers (`==text==`).
