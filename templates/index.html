@@ -8,16 +8,20 @@
 </head>
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans min-h-screen md:py-6">
     <div class="w-full px-4 py-4 sm:px-6 md:max-w-2xl md:mx-auto bg-white dark:bg-gray-900 min-h-screen md:min-h-min md:rounded-lg shadow-none md:shadow-md">
-        
+
+        {% if message %}
+        <div class="mb-4 p-3 rounded text-sm border {% if kind == 'error' %}border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300{% else %}border-green-300 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-300{% endif %}">{{ message }}</div>
+        {% endif %}
+
         <!-- Верхня частина з обтіканням -->
         <div class="mb-6">
             <h1 class="text-3xl md:text-2xl font-bold text-indigo-600 dark:text-indigo-400 mb-3">mind cards log</h1>
-            
+
             <!-- Блок кнопок з обтіканням праворуч -->
             <div class="float-right ml-3 mb-2 flex flex-col gap-1.5 w-28 sm:w-32 shrink-0">
                 <a href="/notes/new" class="bg-indigo-600 hover:bg-indigo-700 text-white text-center py-1 px-2 rounded text-xs font-semibold transition-colors shadow">+ Створити</a>
-                <form action="/backup" method="POST" class="w-full"><button class="w-full bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded text-xs transition-colors shadow">Бекап</button></form>
-                <form action="/restore" method="POST" class="w-full"><button class="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-2 rounded text-xs transition-colors shadow">Відновити</button></form>
+                <form action="/backup" method="POST" class="w-full" onsubmit="return confirm('Дописати поточні нотатки до файлу бекапу? Записи з тими ж ID буде оновлено, решта записів у файлі збережеться.');"><button class="w-full bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded text-xs transition-colors shadow">Бекап</button></form>
+                <form action="/restore" method="POST" class="w-full" onsubmit="return confirm('Відновити нотатки з бекапу? Нотатки з тими ж ID буде перезаписано даними з файлу.');"><button class="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-1 px-2 rounded text-xs transition-colors shadow">Відновити</button></form>
             </div>
 
             <!-- Текст під заголовком -->
@@ -53,7 +57,7 @@
                 {% set ns = namespace(last_date=None) %}
                 {% for note in notes %}
                     {% set note_date = note.created_at.strftime('%Y-%m-%d') if note.created_at else '' %}
-                    
+
                     {% if note_date != ns.last_date %}
                         {% set ns.last_date = note_date %}
                         <div class="date-header text-sm md:text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-6 mb-2 border-b border-gray-200 dark:border-gray-800 pb-1">{{ note_date }}</div>
@@ -90,7 +94,7 @@
     document.getElementById('search-input').addEventListener('input', function(e) {
         const query = e.target.value.toLowerCase();
         const items = document.querySelectorAll('.note-item');
-        
+
         items.forEach(item => {
             const title = item.getAttribute('data-title').toLowerCase();
             if (title.includes(query)) {
@@ -100,6 +104,11 @@
             }
         });
     });
+
+    // Прибираємо ?msg=... з адреси, щоб банер не повертався після оновлення сторінки
+    if (location.search) {
+        history.replaceState(null, '', '/');
+    }
     </script>
 </body>
 </html>
