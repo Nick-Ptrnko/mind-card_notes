@@ -33,7 +33,7 @@ pip install -r requirements.txt
 Create or update your `.env` file in the root directory with your local MySQL credentials:
 
 ```env
-DB_HOST=mind_card_db
+DB_HOST=127.0.0.1
 DB_USER=mysqluser
 DB_PASSWORD=змініть_мене
 DB_NAME=mind_card_notes
@@ -104,9 +104,6 @@ Update your `.env` file so the containerized application knows where to find the
 
 ```env
 DB_HOST=172.17.0.1
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
-DB_NAME=your_database_name
 ```
 
 ### Step 2.4: Run the Docker Container
